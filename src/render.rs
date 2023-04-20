@@ -14,11 +14,57 @@ pub enum RenderError {
     Io(#[from] std::io::Error),
 }
 
+#[derive(Debug, Default)]
+pub struct UnpackOptions {
+    preserve_permissions: bool,
+    unpack_xattrs: bool,
+}
+
+impl UnpackOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn preserve_permissions(mut self, val: bool) -> Self {
+        self.preserve_permissions = val;
+        self
+    }
+
+    pub fn unpack_xattrs(mut self, val: bool) -> Self {
+        self.unpack_xattrs = val;
+        self
+    }
+}
+
 /// Unpack an ordered list of layers to a target directory.
 ///
 /// Layers must be provided as gzip-compressed tar archives, with lower layers
 /// coming first. Target directory must be an existing absolute path.
 pub fn unpack(layers: &[Vec<u8>], target_dir: &path::Path) -> Result<(), RenderError> {
+    let options = UnpackOptions::new()
+        .preserve_permissions(true)
+        .unpack_xattrs(true);
+
+    _unpack(layers, target_dir, options)
+}
+
+/// Unpack an ordered list of layers to a target directory, with unpacking options.
+///
+/// Layers must be provided as gzip-compressed tar archives, with lower layers
+/// coming first. Target directory must be an existing absolute path.
+pub fn unpack_with_options(
+    layers: &[Vec<u8>],
+    target_dir: &path::Path,
+    options: UnpackOptions,
+) -> Result<(), RenderError> {
+    _unpack(layers, target_dir, options)
+}
+
+fn _unpack(
+    layers: &[Vec<u8>],
+    target_dir: &path::Path,
+    options: UnpackOptions,
+) -> Result<(), RenderError> {
     if !target_dir.is_absolute() || !target_dir.exists() || !target_dir.is_dir() {
         return Err(RenderError::WrongTargetPath(target_dir.to_path_buf()));
     }
@@ -26,8 +72,8 @@ pub fn unpack(layers: &[Vec<u8>], target_dir: &path::Path) -> Result<(), RenderE
         // Unpack layers
         let gz_dec = gzip::Decoder::new(l.as_slice())?;
         let mut archive = tar::Archive::new(gz_dec);
-        archive.set_preserve_permissions(true);
-        archive.set_unpack_xattrs(true);
+        archive.set_preserve_permissions(options.preserve_permissions);
+        archive.set_unpack_xattrs(options.unpack_xattrs);
         archive.unpack(target_dir)?;
 
         // Clean whiteouts
