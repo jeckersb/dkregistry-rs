@@ -18,6 +18,7 @@ pub enum RenderError {
 pub struct UnpackOptions {
     preserve_permissions: bool,
     unpack_xattrs: bool,
+    ignore_permissions: bool,
 }
 
 impl UnpackOptions {
@@ -34,6 +35,11 @@ impl UnpackOptions {
         self.unpack_xattrs = val;
         self
     }
+
+    pub fn ignore_permissions(mut self, val: bool) -> Self {
+        self.ignore_permissions = val;
+        self
+    }
 }
 
 /// Unpack an ordered list of layers to a target directory.
@@ -43,7 +49,8 @@ impl UnpackOptions {
 pub fn unpack(layers: &[Vec<u8>], target_dir: &path::Path) -> Result<(), RenderError> {
     let options = UnpackOptions::new()
         .preserve_permissions(true)
-        .unpack_xattrs(true);
+        .unpack_xattrs(true)
+        .ignore_permissions(false);
 
     _unpack(layers, target_dir, options)
 }
@@ -74,6 +81,7 @@ fn _unpack(
         let mut archive = tar::Archive::new(gz_dec);
         archive.set_preserve_permissions(options.preserve_permissions);
         archive.set_unpack_xattrs(options.unpack_xattrs);
+        archive.set_ignore_permissions(options.ignore_permissions);
         archive.unpack(target_dir)?;
 
         // Clean whiteouts
