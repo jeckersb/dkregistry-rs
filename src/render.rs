@@ -106,7 +106,7 @@ fn _unpack(
 
                     // Remove whiteout place-holder
                     let abs_wh_path = target_dir.join(&rel_parent).join(fname);
-                    fs::remove_dir_all(abs_wh_path)?;
+                    fs::remove_file(abs_wh_path)?;
                 };
             }
         }
